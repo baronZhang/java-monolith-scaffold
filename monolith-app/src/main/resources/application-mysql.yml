@@ -1,0 +1,12 @@
+# =====================================================================
+# mysql profile：数据源换成 MySQL 8。
+# 本机开发：docker compose up -d mysql 启动的 MySQL 映射在 3307 端口（避开本机可能已有的 3306）。
+# 容器里运行：由 docker-compose.yml 通过环境变量把 MYSQL_HOST 设成 mysql、端口 3306。
+# 表结构和种子数据仍由 Flyway 管理，第一次连上空库时自动执行 V1~V3。
+# =====================================================================
+spring:
+  datasource:
+    # rewriteBatchedStatements：批量插入时合并成一条多值 INSERT，减少网络往返
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3307}/${MYSQL_DATABASE:monolith}?characterEncoding=utf8&rewriteBatchedStatements=true
+    username: ${MYSQL_USER:monolith}
+    password: ${MYSQL_PASSWORD:monolith}

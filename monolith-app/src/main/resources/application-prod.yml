@@ -1,0 +1,21 @@
+# =====================================================================
+# prod profile（= mysql + redis，见 application.yml 里的 profiles.group）。
+# 这个 demo 没有上过生产，这里列的是"上生产至少要改什么"。
+# =====================================================================
+logging:
+  structured:
+    format:
+      # 结构化 JSON 日志（ECS 格式），方便 ELK / Loki 按字段检索；本地开发看纯文本更直观，所以只在 prod 打开
+      console: ecs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # 生产只暴露必要的端点
+        include: health,info,prometheus
+
+app:
+  auth:
+    # 生产环境的密钥必须从环境变量或密钥管理服务注入，没有就启动失败（这里故意不写默认值）
+    jwt-secret: ${APP_AUTH_JWT_SECRET}

@@ -1,0 +1,9 @@
+# =====================================================================
+# demo profile：给 Vue 前端联调和现场演示用。
+# - 开放 /api/debug/expire-token、/api/debug/stats（DebugController 上的 @Profile("demo")）
+# - 订单 2 分钟不支付就自动取消，每 10 秒扫描一次：演示时不用干等 15 分钟
+# =====================================================================
+app:
+  order:
+    payment-timeout: 2m
+    timeout-scan-interval: 10s

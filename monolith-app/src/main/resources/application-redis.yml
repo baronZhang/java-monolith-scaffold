@@ -1,0 +1,24 @@
+# =====================================================================
+# redis profile：缓存和 access token 吊销表都换成 Redis。
+# 多实例部署时必须用它：Caffeine 是每个实例各一份，A 实例上退出登录、改了价格，B 实例并不知道。
+# =====================================================================
+spring:
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      # 默认连本机 6379；用 docker compose 起的 Redis（映射在本机 6380）时设 REDIS_PORT=6380
+      port: ${REDIS_PORT:6379}
+      database: ${REDIS_DATABASE:0}
+      # 命令超时：Redis 慢了就快速失败，不要拖住业务线程
+      timeout: 2s
+
+management:
+  health:
+    redis:
+      enabled: true
+
+app:
+  cache:
+    store: redis
+  auth:
+    revocation-store: redis

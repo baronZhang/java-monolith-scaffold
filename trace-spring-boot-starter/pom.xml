@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  手写的 starter：给 Web 应用自动加上 traceId（放进 MDC、写回响应头）和一行访问日志。
+
+  命名规范：第三方 starter 叫 xxx-spring-boot-starter；spring-boot-starter-xxx 这种前缀是官方保留的。
+  官方建议拆成 autoconfigure（自动配置代码）+ starter（只聚合依赖的空模块）两个 artifact，
+  这里规模很小，合成一个模块，见"单体 3.4 自动配置原理与手写 starter"。
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.example</groupId>
+        <artifactId>java-monolith-scaffold</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>trace-spring-boot-starter</artifactId>
+    <name>trace-spring-boot-starter</name>
+    <description>手写 starter：traceId 透传与访问日志</description>
+
+    <dependencies>
+        <!-- 自动配置的注解和条件（@AutoConfiguration、@ConditionalOnXxx）都在这里 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+        <!-- 用到 Servlet 过滤器相关的类；optional：不强加给使用方，使用方是 Web 应用时自然会有 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- 生成 META-INF/spring-configuration-metadata.json：使用方在 IDE 里写配置时有提示和说明 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- 测试：ApplicationContextRunner 是测试自动配置的标准做法 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.springframework.boot</groupId>
+                            <artifactId>spring-boot-configuration-processor</artifactId>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

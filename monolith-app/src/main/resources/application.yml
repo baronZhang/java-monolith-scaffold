@@ -1,0 +1,146 @@
+# =====================================================================
+# 默认配置（所有 profile 共享）。
+# 默认用 H2 内存库 + Caffeine 本地缓存：clone 下来不装 MySQL、Redis 也能直接跑。
+#
+# profile 一览：
+#   demo  ：给 Vue 前端联调、现场演示用（开放 /api/debug/*，订单 2 分钟超时）
+#   mysql ：换成 MySQL（docker-compose 里的 MySQL 映射在本机 3307 端口）
+#   redis ：缓存和 token 吊销表换成 Redis（多实例部署必须）
+#   prod  ：= mysql + redis，并且要求从环境变量注入 JWT 密钥
+# 配置的优先级：命令行参数 > 环境变量 > application-{profile}.yml > application.yml
+# =====================================================================
+
+server:
+  port: 8080
+  # 优雅停机：收到停机信号后不再接新请求，等正在处理的请求完成（最多等 spring.lifecycle.timeout-per-shutdown-phase）
+  shutdown: graceful
+
+spring:
+  application:
+    name: monolith-app
+  profiles:
+    group:
+      prod: mysql,redis
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+  datasource:
+    # H2 内存库，MySQL 兼容模式。
+    # DATABASE_TO_LOWER：未加引号的表名、列名统一转小写（和 MySQL 在 Linux 上的行为一致）；
+    # IGNORECASE：字符串比较不区分大小写（模拟 MySQL 默认的 utf8mb4_0900_ai_ci 排序规则）；
+    # DB_CLOSE_DELAY=-1：最后一个连接关闭后也不销毁数据库，进程不退出数据就一直在。
+    url: jdbc:h2:mem:monolith;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;IGNORECASE=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+    hikari:
+      # 连接池大小不是越大越好：数据库能同时干活的线程有限，连接多了只是在数据库里排队、互相抢锁
+      maximum-pool-size: 10
+      # 拿不到连接最多等 3 秒就报错，不要让请求无限挂着。
+      # 注意单位是毫秒：hikari.* 直接绑定到 HikariConfig 的 long 型 setter，不认 3s 这种 Duration 写法（实际踩过）
+      connection-timeout: 3000
+
+  flyway:
+    # common 是两种数据库通用的脚本；{vendor} 会被替换成 h2 或 mysql，放各自不兼容的部分
+    locations: classpath:db/migration/common,classpath:db/migration/{vendor}
+
+  task:
+    # @Async、事件监听器用的线程池。Spring Boot 的默认值是核心 8 个线程、队列无界——
+    # 队列无界意味着最大线程数永远用不上，任务堆积时只会把内存吃满。这里改成有界队列。
+    execution:
+      thread-name-prefix: app-async-
+      pool:
+        core-size: 4
+        max-size: 8
+        queue-capacity: 500
+        keep-alive: 60s
+      shutdown:
+        # 停机时等异步任务执行完，而不是直接中断
+        await-termination: true
+        await-termination-period: 10s
+    scheduling:
+      thread-name-prefix: app-scheduling-
+      pool:
+        size: 2
+
+  modulith:
+    events:
+      jdbc:
+        schema-initialization:
+          # 事件表由 Flyway 管理（V3__event_publication.sql），不让框架启动时自己建表
+          enabled: false
+      # 应用重启时，把上次没处理完的事件重新投递一次（监听器都是幂等的，重复投递没关系）
+      republish-outstanding-events-on-restart: true
+      staleness:
+        # 处理中超过 5 分钟还没完成（比如处理到一半进程崩了），视为失败，交给重投任务
+        processing: 5m
+
+mybatis-plus:
+  global-config:
+    banner: false
+  configuration:
+    # 数据库下划线列名自动映射到 Java 驼峰属性（created_at → createdAt）
+    map-underscore-to-camel-case: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # 健康检查、应用信息、指标、Prometheus 抓取、模块结构
+        include: health,info,metrics,prometheus,modulith
+  endpoint:
+    health:
+      # /actuator/health/liveness 和 /readiness：给 Kubernetes 的存活、就绪探针用
+      probes:
+        enabled: true
+      show-components: always
+  health:
+    # 默认不用 Redis，关掉 Redis 健康检查，否则没有 Redis 时健康状态会是 DOWN；redis profile 里再打开
+    redis:
+      enabled: false
+  info:
+    java:
+      enabled: true
+    os:
+      enabled: true
+
+logging:
+  pattern:
+    # 默认日志格式里留给"关联 id"的位置，填入手写 starter 放进 MDC 的 traceId
+    correlation: "[%X{traceId:-}] "
+  level:
+    # 每个请求一行的访问日志（logger 名叫 ACCESS），由 trace-spring-boot-starter 输出
+    ACCESS: info
+
+# ===== 本项目自己的配置 =====
+app:
+  id:
+    # 雪花算法的机器号：多实例部署时每个实例必须不同
+    worker-id: 1
+  auth:
+    access-token-ttl: 5m
+    refresh-token-ttl: 7d
+    issuer: monolith-scaffold
+    # 本地开发用的默认密钥。prod profile 下会拒绝这个默认值，必须通过环境变量 APP_AUTH_JWT_SECRET 注入
+    jwt-secret: ${APP_AUTH_JWT_SECRET:local-dev-secret-change-me-0123456789abcdef}
+    revocation-store: caffeine
+  cache:
+    store: caffeine
+    ttl: 10m
+    ttl-jitter: 2m
+    null-value-ttl: 30s
+    maximum-size: 10000
+  order:
+    # 下单后 15 分钟不支付，自动取消并释放库存
+    payment-timeout: 15m
+    timeout-scan-enabled: true
+    timeout-scan-interval: 30s
+    timeout-scan-batch-size: 100
+  events:
+    retry-enabled: true
+    retry-interval: 1m
+
+# 手写 starter 的配置（trace-spring-boot-starter），写配置时 IDE 有提示
+scaffold:
+  trace:
+    header-name: X-Trace-Id
+    access-log: true

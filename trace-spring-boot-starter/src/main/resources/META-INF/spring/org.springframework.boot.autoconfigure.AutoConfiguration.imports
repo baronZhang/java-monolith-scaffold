@@ -1,0 +1,2 @@
+# Spring Boot 2.7 起的自动配置注册方式（取代 spring.factories 里的 EnableAutoConfiguration 键）：一行一个类名
+com.example.trace.TraceAutoConfiguration

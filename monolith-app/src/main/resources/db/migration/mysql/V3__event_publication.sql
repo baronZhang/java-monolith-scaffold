@@ -1,0 +1,17 @@
+-- V3（MySQL 版）：Spring Modulith 事件发布登记表，内容照抄 spring-modulith-events-jdbc 2.1.1 自带的 schemas/v2/schema-mysql.sql。
+-- 业务代码发布事件时，在同一个事务里往这张表插一行（每个监听器一行），监听器成功后标记完成——相当于本地消息表。
+
+CREATE TABLE IF NOT EXISTS EVENT_PUBLICATION
+(
+  ID                     VARCHAR(36) NOT NULL,
+  LISTENER_ID            VARCHAR(512) NOT NULL,
+  EVENT_TYPE             VARCHAR(512) NOT NULL,
+  SERIALIZED_EVENT       VARCHAR(4000) NOT NULL,
+  PUBLICATION_DATE       TIMESTAMP(6) NOT NULL,
+  COMPLETION_DATE        TIMESTAMP(6) DEFAULT NULL NULL,
+  STATUS                 VARCHAR(20),
+  COMPLETION_ATTEMPTS    INT,
+  LAST_RESUBMISSION_DATE TIMESTAMP(6) DEFAULT NULL NULL,
+  PRIMARY KEY (ID),
+  INDEX EVENT_PUBLICATION_BY_COMPLETION_DATE_IDX (COMPLETION_DATE)
+);

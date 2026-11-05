@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  父 POM（聚合工程）：只负责"版本、插件、质量门禁"这些全局约定，不放业务代码。
+
+  两个子模块：
+  - trace-spring-boot-starter：手写的 starter，演示自动配置原理（traceId + 访问日志）
+  - monolith-app：模块化单体应用本身，也是唯一的部署单元（一个 jar）
+
+  基线来自 Spring Initializr（start.spring.io）生成的工程，见 docs 里的"单体 2.1 Maven 工程与依赖管理"。
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+      继承 Spring Boot 的父 POM：它导入了 spring-boot-dependencies 这个 BOM，
+      统一管理几百个依赖和常用插件的版本，子模块声明依赖时不用再写版本号。
+      4.1.2 在 2026-10-22 发布，还不满两周，所以用 4.1.1（2026-08-20）。
+    -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.1.1</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.example</groupId>
+    <artifactId>java-monolith-scaffold</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>java-monolith-scaffold</name>
+    <description>Java 模块化单体脚手架 demo：下单链路 + 原理实验 + 讲解文档</description>
+
+    <modules>
+        <module>trace-spring-boot-starter</module>
+        <module>monolith-app</module>
+    </modules>
+
+    <properties>
+        <!-- JDK 25 是当前最新的 LTS 版本；编译目标版本由父 POM 根据它设置 -->
+        <java.version>25</java.version>
+        <!--
+          可重复构建：固定 jar 内文件的时间戳，同一份源码两次构建出的 jar 逐字节相同，
+          方便比对制品、做构建溯源。发版时由发布流程更新这个值。
+        -->
+        <project.build.outputTimestamp>2026-10-27T00:00:00Z</project.build.outputTimestamp>
+
+        <!-- ===== 不在 Spring Boot BOM 里的依赖：显式写版本，并遵守"发布满两周"的规则 ===== -->
+        <!-- Spring Modulith：模块边界校验 + 事件发布登记表；2.1.2 发布于 2026-10-22，未满两周 -->
+        <spring-modulith.version>2.1.1</spring-modulith.version>
+        <!-- MyBatis-Plus：3.5.18 发布于 2026-10-25，未满两周；3.5.17 发布于 2026-07-08 -->
+        <mybatis-plus.version>3.5.17</mybatis-plus.version>
+
+        <!-- ===== 质量工具的版本 ===== -->
+        <spotless-maven-plugin.version>3.9.0</spotless-maven-plugin.version>
+        <palantir-java-format.version>2.99.0</palantir-java-format.version>
+        <maven-checkstyle-plugin.version>3.6.0</maven-checkstyle-plugin.version>
+        <checkstyle.version>14.3.0</checkstyle.version>
+        <!-- 0.8.16 发布于 2026-10-26，未满两周 -->
+        <jacoco-maven-plugin.version>0.8.15</jacoco-maven-plugin.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- 本工程自己的 starter：子模块引用时不用写版本 -->
+            <dependency>
+                <groupId>com.example</groupId>
+                <artifactId>trace-spring-boot-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <!-- 导入 BOM（scope=import）：把对方管理的一组版本整体拿过来，保证同一家的组件版本一致 -->
+            <dependency>
+                <groupId>org.springframework.modulith</groupId>
+                <artifactId>spring-modulith-bom</artifactId>
+                <version>${spring-modulith.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-bom</artifactId>
+                <version>${mybatis-plus.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>com.diffplug.spotless</groupId>
+                    <artifactId>spotless-maven-plugin</artifactId>
+                    <version>${spotless-maven-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-checkstyle-plugin</artifactId>
+                    <version>${maven-checkstyle-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.jacoco</groupId>
+                    <artifactId>jacoco-maven-plugin</artifactId>
+                    <version>${jacoco-maven-plugin.version}</version>
+                </plugin>
+                <!--
+                  site 插件不在 Spring Boot 的版本管理里，不写版本就会用 Maven 自带的默认绑定版本，
+                  换一个 Maven 版本结果就可能不同。这是 requirePluginVersions 规则第一次运行时抓出来的。
+                -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-site-plugin</artifactId>
+                    <version>3.22.0</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
+        <plugins>
+            <!--
+              Enforcer：构建一开始（validate 阶段）就检查环境和依赖，不满足直接失败。
+              Maven 没有 npm 那样的锁文件，"可重复构建"靠这几条规则 + BOM + 显式版本来保证。
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce-build-rules</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireMavenVersion>
+                                    <version>[3.9.6,)</version>
+                                    <message>请用 ./mvnw 构建（项目固定的 Maven 版本）</message>
+                                </requireMavenVersion>
+                                <requireJavaVersion>
+                                    <version>[25,)</version>
+                                    <message>需要 JDK 25（LTS）：设置 JAVA_HOME 指向 JDK 25 后再构建</message>
+                                </requireJavaVersion>
+                                <!--
+                                  禁止版本范围、LATEST、RELEASE、SNAPSHOT 这类"每次解析结果可能不同"的写法。
+                                  本工程模块之间互相引用的 SNAPSHOT 是同一次构建产出的，放行。
+                                -->
+                                <banDynamicVersions>
+                                    <ignores>
+                                        <ignore>com.example:*</ignore>
+                                    </ignores>
+                                </banDynamicVersions>
+                                <!-- 同一个依赖在一个 POM 里声明两次、版本还不同：多半是复制粘贴出的错 -->
+                                <banDuplicatePomDependencyVersions/>
+                                <!-- 传递依赖里同一个库出现多个版本时，要求解析到的是其中最高的那个，避免运行时缺方法 -->
+                                <requireUpperBoundDeps/>
+                                <!-- 所有插件都必须写明版本（大部分由 Spring Boot 父 POM 管理） -->
+                                <requirePluginVersions>
+                                    <message>插件必须显式指定版本，否则不同机器可能用到不同版本</message>
+                                </requirePluginVersions>
+                                <!--
+                                  禁用已经被替代、或者不该出现的依赖。
+                                  注意：Spring Framework 7 去掉了 spring-jcl，改为直接依赖 commons-logging 1.3（它能自动桥接到 SLF4J），
+                                  所以不能再像 Spring 5/6 时代那样把 commons-logging 加进黑名单。
+                                -->
+                                <bannedDependencies>
+                                    <excludes>
+                                        <!-- JUnit 4：统一用 JUnit Jupiter -->
+                                        <exclude>junit:junit</exclude>
+                                        <!-- log4j 1.x：早已停止维护，有已知漏洞 -->
+                                        <exclude>log4j:log4j</exclude>
+                                    </excludes>
+                                </bannedDependencies>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!--
+              Spotless：代码格式化。verify 阶段只检查（spotless:check），不通过就让构建失败；
+              本地执行 ./mvnw spotless:apply 自动格式化。
+              格式用 palantir-java-format：4 空格缩进、每行 120 字符，适合 lambda 和链式调用较多的 Spring 代码。
+            -->
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <configuration>
+                    <java>
+                        <palantirJavaFormat>
+                            <version>${palantir-java-format.version}</version>
+                        </palantirJavaFormat>
+                        <removeUnusedImports/>
+                        <trimTrailingWhitespace/>
+                        <endWithNewline/>
+                    </java>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!--
+              Checkstyle：格式化工具管不到的规范（命名、空 catch、星号导入、equals/hashCode 成对等）。
+              规则文件在 config/checkstyle/checkstyle.xml，刻意保持精简：规则太多、太吹毛求疵，最后只会被整体关掉。
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <configuration>
+                    <configLocation>${maven.multiModuleProjectDirectory}/config/checkstyle/checkstyle.xml</configLocation>
+                    <consoleOutput>true</consoleOutput>
+                    <failOnViolation>true</failOnViolation>
+                    <violationSeverity>warning</violationSeverity>
+                    <includeTestSourceDirectory>true</includeTestSourceDirectory>
+                </configuration>
+                <dependencies>
+                    <!-- 插件自带的 Checkstyle 内核比较旧，显式换成新版本 -->
+                    <dependency>
+                        <groupId>com.puppycrawl.tools</groupId>
+                        <artifactId>checkstyle</artifactId>
+                        <version>${checkstyle.version}</version>
+                    </dependency>
+                </dependencies>
+                <executions>
+                    <execution>
+                        <id>checkstyle</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -1,0 +1,27 @@
+# 构建产物
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.classpath
+.factorypath
+.project
+.settings/
+.apt_generated
+.sts4-cache
+
+# 本地环境变量（可能含密钥），不要提交
+.env
+
+# 系统文件
+.DS_Store
+
+# Obsidian 的工作区配置（docs 目录会被链接进 Obsidian 仓库）
+docs/.obsidian/

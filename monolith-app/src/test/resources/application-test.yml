@@ -1,0 +1,18 @@
+# =====================================================================
+# 测试用配置（@ActiveProfiles("test")）。
+# =====================================================================
+spring:
+  datasource:
+    # 每个 Spring 测试上下文用一个独立的内存库：上下文之间不会互相看到对方的数据
+    url: jdbc:h2:mem:test-${random.uuid};MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;IGNORECASE=TRUE;DB_CLOSE_DELAY=-1
+
+app:
+  order:
+    # 定时任务在测试里关掉，需要时由测试代码直接调用，结果才可控
+    timeout-scan-enabled: false
+  events:
+    retry-enabled: false
+
+logging:
+  level:
+    ACCESS: warn

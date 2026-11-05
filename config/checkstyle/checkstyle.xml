@@ -1,0 +1,92 @@
+<?xml version="1.0"?>
+<!DOCTYPE module PUBLIC
+        "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+        "https://checkstyle.org/dtds/configuration_1_3.dtd">
+<!--
+  Checkstyle 规则：只管格式化工具（Spotless）管不到的东西。
+  原则：每条规则都要能说清楚"它防住了什么问题"，说不清的不加。规则太多太琐碎，团队最后会整体关掉。
+-->
+<module name="Checker">
+    <property name="charset" value="UTF-8"/>
+    <property name="severity" value="warning"/>
+    <property name="fileExtensions" value="java"/>
+
+    <!-- 测试代码不适用严格的方法命名（测试方法用中文命名，常以 JDK、CGLIB 这类缩写开头），见下面的两个 MethodName -->
+    <module name="SuppressionSingleFilter">
+        <property name="id" value="strictMethodName"/>
+        <property name="files" value="[/\\]src[/\\]test[/\\]"/>
+    </module>
+
+    <!-- 用空格缩进，不用 Tab：不同编辑器对 Tab 宽度理解不同 -->
+    <module name="FileTabCharacter"/>
+    <!-- 文件末尾要有换行：避免 diff 里出现"\ No newline at end of file" -->
+    <module name="NewlineAtEndOfFile"/>
+    <!-- 行宽上限和格式化工具保持一致；import 和长链接不算 -->
+    <module name="LineLength">
+        <property name="max" value="120"/>
+        <property name="ignorePattern" value="^(package|import) |https?://"/>
+    </module>
+
+    <module name="TreeWalker">
+        <!-- ===== import ===== -->
+        <!-- 星号导入会让"这个类从哪来"变得不明确，也可能因为新增同名类而突然编译失败 -->
+        <module name="AvoidStarImport"/>
+        <module name="RedundantImport"/>
+        <module name="UnusedImports"/>
+        <!-- sun.* 是 JDK 内部 API，随时可能删除 -->
+        <module name="IllegalImport"/>
+
+        <!-- ===== 命名：和 Java 社区惯例一致 ===== -->
+        <module name="PackageName">
+            <property name="format" value="^[a-z]+(\.[a-z][a-z0-9]*)*$"/>
+        </module>
+        <module name="TypeName"/>
+        <!-- 业务代码：小驼峰 -->
+        <module name="MethodName">
+            <property name="id" value="strictMethodName"/>
+        </module>
+        <!-- 测试代码：方法名用中文写成一句需求说明，允许汉字、下划线和大写缩写开头（上面的严格规则对测试代码不生效） -->
+        <module name="MethodName">
+            <property name="id" value="testMethodName"/>
+            <property name="format" value="^[a-zA-Z\p{IsHan}][\p{IsHan}a-zA-Z0-9_]*$"/>
+        </module>
+        <!-- 常量全大写；日志对象按 SLF4J 社区的习惯允许叫 log -->
+        <module name="ConstantName">
+            <property name="format" value="^log$|^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$"/>
+        </module>
+        <module name="StaticVariableName"/>
+        <module name="MemberName"/>
+        <module name="ParameterName"/>
+        <module name="LocalVariableName"/>
+        <module name="LocalFinalVariableName"/>
+
+        <!-- ===== 容易出 bug 的写法 ===== -->
+        <!-- if / for 不加大括号，后人加一行代码就出错（苹果 goto fail 漏洞就是这类问题） -->
+        <module name="NeedBraces"/>
+        <!-- 空的 catch：异常被悄悄吞掉，出了问题无从查起。确实要忽略时，把变量命名为 ignored 并写注释 -->
+        <module name="EmptyCatchBlock">
+            <property name="exceptionVariableName" value="ignored|expected"/>
+        </module>
+        <!-- 重写了 equals 却没重写 hashCode，放进 HashMap / HashSet 会出错 -->
+        <module name="EqualsHashCode"/>
+        <!-- 用 == 比较字符串 -->
+        <module name="StringLiteralEquality"/>
+        <!-- switch 的 case 没有 break 也没有注释，多半是漏写 -->
+        <module name="FallThrough"/>
+        <!-- 在循环体里修改循环变量 -->
+        <module name="ModifiedControlVariable"/>
+        <!-- long 型字面量用小写 l 容易和 1 混淆 -->
+        <module name="UpperEll"/>
+        <!-- 一行只写一条语句、一次只声明一个变量 -->
+        <module name="OneStatementPerLine"/>
+        <module name="MultipleVariableDeclarations"/>
+        <!-- 数组声明写成 String[] args 而不是 String args[] -->
+        <module name="ArrayTypeStyle"/>
+        <!-- e.printStackTrace() 直接打到标准错误，绕过了日志系统（没有 traceId、不进日志文件） -->
+        <module name="Regexp">
+            <property name="format" value="\.printStackTrace\(\)"/>
+            <property name="illegalPattern" value="true"/>
+            <property name="message" value="不要用 printStackTrace()，用日志记录异常"/>
+        </module>
+    </module>
+</module>
