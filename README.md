@@ -24,12 +24,12 @@ A modular monolith on Spring Boot 4.1, JDK 25, Spring Modulith, and MyBatis-Plus
 
 | Check | Result | Last run |
 |---|---|---|
-| `./mvnw clean verify` | 152 tests, 0 failures, 6 skipped | 2026-11-04 |
-| MySQL labs (the 6 skipped above, need `LAB_MYSQL_URL`) | Passed with MySQL | 2026-10-27 |
+| `./mvnw clean verify` on one machine | 152 tests, 0 failures, 6 skipped (the MySQL labs need `LAB_MYSQL_URL`) | 2026-11-04 |
+| [GitHub Actions](https://github.com/baronZhang/java-monolith-scaffold/actions/workflows/ci.yml) `verify` job, with MySQL and Redis | 152 tests, 0 failures, 0 skipped | 2026-11-05 |
 | Manual API walkthrough on H2 and on MySQL + Redis | Worked | 2026-10-27 |
 | Timeout cancellation and graceful shutdown | Ran as expected | 2026-10-27 |
 
-**Not verified:** the Docker image has not been built. Graceful shutdown details on Kubernetes have not been tested.
+**Not verified:** the Docker image has not been built, and the CI `image` job runs only when triggered by hand. Graceful shutdown details on Kubernetes have not been tested.
 
 **Known issue:** the `/actuator/modulith` response has 53 extra bytes after the JSON. The cause has not been found, so the integration test asserts on the raw string.
 
