@@ -51,4 +51,4 @@ compose.yaml / Dockerfile    本地依赖与分层镜像
 ## 说明
 
 - 仓库里的密码和密钥都是本地演示用的值。
-- 接口和另一个 Vue 3 前端 demo 一致，前端不在这个仓库里。
+- 接口和 [Vue 3 前端 demo](https://github.com/baronZhang/vue3-scaffold-demo) 一致，前端在单独的仓库里。

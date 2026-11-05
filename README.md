@@ -77,5 +77,5 @@ compose.yaml, Dockerfile     local dependencies and layered image
 
 - Code comments are in Chinese.
 - Passwords and secrets in this repository are demo values for local use only.
-- The API matches a separate Vue 3 demo frontend, which is not part of this repository.
+- The API matches the [Vue 3 demo frontend](https://github.com/baronZhang/vue3-scaffold-demo), which lives in its own repository.
 - This project was developed with Claude Code. The results above come from real test runs.
